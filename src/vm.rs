@@ -171,7 +171,7 @@ mod tests {
     }
     fn test_jmpf() {
         let mut test_vm = VM::new();
-        let test_bytes = vec![6, 0, 0, 0];
+        let test_bytes = vec![7, 0, 0, 0];
         test_vm.registers[0] = 1;
         test_vm.program = test_bytes;
         test_vm.run_once_write_everywhere();
