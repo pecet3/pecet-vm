@@ -46,15 +46,15 @@ impl VM {
             return true;
         }
         match self.decode_opcode() {
-            Opcode::JMP => {
+            Opcode::JMPF => {
                 let value = self.registers[self.next_8_bits() as usize];
                 self.pc += value as usize;
-                println!("{:?}", value);
+                println!("JMP value: {:?}", value);
             }
             Opcode::JMP => {
                 let target = self.registers[self.next_8_bits() as usize];
                 self.pc = target as usize;
-                println!("{:?}", target)
+                println!("JMP target: {:?}", target)
             }
             Opcode::DIV => {
                 let register1 = self.registers[self.next_8_bits() as usize];
@@ -169,13 +169,15 @@ mod tests {
 
         assert_eq!(test_vm.pc, 1);
     }
+    #[test]
+
     fn test_jmpf() {
         let mut test_vm = VM::new();
-        let test_bytes = vec![7, 0, 0, 0];
-        test_vm.registers[0] = 1;
+        let test_bytes = vec![7, 0, 0, 0, 1, 0, 1, 0];
+        test_vm.registers[0] = 4;
         test_vm.program = test_bytes;
         test_vm.run_once_write_everywhere();
 
-        assert_eq!(test_vm.pc, 1);
+        assert_eq!(test_vm.pc, 6);
     }
 }
