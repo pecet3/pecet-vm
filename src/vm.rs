@@ -51,6 +51,20 @@ impl VM {
             return true;
         }
         match self.decode_opcode() {
+            Opcode::SQUARE => {
+                let register = self.next_8_bits() as usize;
+                let target = self.registers[register];
+                if self.equal_flag {
+                    self.pc = target as usize;
+                }
+            }
+            Opcode::LABEL => {
+                let register = self.next_8_bits() as usize;
+                let target = self.registers[register];
+                if self.equal_flag {
+                    self.pc = target as usize;
+                }
+            }
             Opcode::JMPEQ => {
                 let register = self.next_8_bits() as usize;
                 let target = self.registers[register];
@@ -133,10 +147,13 @@ impl VM {
                 let register2 = self.registers[self.next_8_bits() as usize];
                 self.registers[self.next_8_bits() as usize] = register1 / register2;
                 self.remainder = (register1 % register2) as u32;
+                println!("DIV r1: {} r2: {}", register1, register2);
                 println!(
-                    "DIV r1: {} r2: {},rest: {:?}",
-                    register1, register2, self.remainder
+                    "RESULT: {:?} REST: {:?}",
+                    register1 / register2,
+                    self.remainder
                 );
+
                 return true;
             }
             Opcode::MUL => {
@@ -144,6 +161,8 @@ impl VM {
                 let register2 = self.registers[self.next_8_bits() as usize];
                 println!("MUL r1: {} r2: {}", register1, register2,);
                 self.registers[self.next_8_bits() as usize] = register1 * register2;
+                println!("RESULT: {:?}", register1 * register2);
+
                 return true;
             }
             Opcode::SUB => {
@@ -151,6 +170,8 @@ impl VM {
                 let register2 = self.registers[self.next_8_bits() as usize];
                 println!("SUB r1: {} r2: {}", register1, register2,);
                 self.registers[self.next_8_bits() as usize] = register1 - register2;
+                println!("RESULT: {:?}", register1 - register2);
+
                 return true;
             }
             Opcode::ADD => {
@@ -158,12 +179,14 @@ impl VM {
                 let register2 = self.registers[self.next_8_bits() as usize];
                 println!("ADD r1: {} r2: {}", register1, register2,);
                 self.registers[self.next_8_bits() as usize] = register1 + register2;
+                println!("RESULT: {:?}", register1 + register2);
+
                 return true;
             }
             Opcode::LOAD => {
                 let register = self.next_8_bits() as usize;
                 let number = self.next_16_bits() as u16;
-                println!("LOAD {:?}", register);
+                println!("LOAD value:{:?} to r{:?}", number, register);
 
                 self.registers[register] = number as i32;
                 return false;

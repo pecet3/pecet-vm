@@ -1,6 +1,8 @@
+use std::ops::Deref;
+
 use nom::{
     branch::alt,
-    bytes::complete::{tag, take_while1},
+    bytes::complete::{tag, tag_no_case, take_while1},
     character::complete::{alpha1, alphanumeric1, char, digit1, multispace0, space0, space1},
     combinator::{map, opt, recognize},
     number::complete::{float, recognize_float},
@@ -21,15 +23,127 @@ pub enum Token {
     IrString { name: String },
     Comment,
 }
-pub struct Assembler<'a> {
-    input: &'a str,
-}
-impl<'a> Assembler<'a> {
-    pub fn new(input: &'a str) -> Assembler<'a> {
-        Assembler { input }
+pub struct Assembler {}
+impl Assembler {
+    pub fn new() -> Assembler {
+        Assembler {}
     }
-    pub fn tokenize(&self) -> IResult<&str, Vec<Token>> {
-        let (input, _) = multispace0(self.input)?;
+
+    pub fn compile(&self, tokens: Vec<Token>) -> Result<Vec<u8>, &str> {
+        let mut index = 0;
+        let mut result: Vec<u8> = Vec::new();
+
+        while index < tokens.len() {
+            let token = &tokens[index];
+            match token {
+                Token::Op { code } => {
+                    match &code {
+                        Opcode::LOAD => {
+                            result.push(1); // Placeholder for LOAD Opcode
+
+                            if index + 1 < tokens.len() {
+                                if let Token::Register { reg_num } = tokens[index + 1] {
+                                    result.push(reg_num as u8); // Push register number directly
+                                }
+                            }
+
+                            if index + 2 < tokens.len() {
+                                if let Token::IntegerOperand { value } = tokens[index + 2] {
+                                    if value > 255 {
+                                        // Split value into two 8-bit parts (little-endian order)
+                                        let low_byte = (value & 0xFF) as i32; // Lower 8 bits
+                                        let high_byte = ((value >> 8) & 0xFF) as i32; // Upper 8 bits
+
+                                        // Push low byte first, then high byte
+                                        result.push(high_byte as u8);
+                                        result.push(low_byte as u8);
+                                    } else {
+                                        // For values less than or equal to 255
+                                        result.push(0);
+                                        result.push(value as u8);
+                                    }
+                                }
+                            }
+
+                            index += 2; // Move index forward by
+                        }
+                        // Handle other opcodes
+                        Opcode::HLT => result.push(0),
+                        Opcode::IGL => result.push(0),
+                        Opcode::ADD => result.push(2),
+                        Opcode::SUB => result.push(3),
+                        Opcode::MUL => result.push(4),
+                        Opcode::DIV => result.push(5),
+                        Opcode::JMP => result.push(6),
+                        Opcode::JMPF => result.push(7),
+                        Opcode::EQ => result.push(8),
+                        Opcode::NEQ => result.push(9),
+                        Opcode::GT => result.push(10),
+                        Opcode::LT => result.push(11),
+                        Opcode::GTQ => result.push(12),
+                        Opcode::LTQ => result.push(13),
+                        Opcode::JMPEQ => result.push(14),
+                        Opcode::LABEL => result.push(15),
+                        Opcode::SQUARE => result.push(16),
+                    }
+                }
+                Token::Register { reg_num } => {
+                    result.push(*reg_num as u8);
+                    if index + 1 < tokens.len() {
+                        if let Token::Register { reg_num } = tokens[index + 1] {
+                        } else {
+                            result.push(0)
+                        }
+                    }
+                }
+                Token::IntegerOperand { value } => {
+                    // Convert the integer to bytes in little-endian order
+                    let bytes = value.to_le_bytes(); // Converts to an array of bytes [u8; 4] in little endian
+
+                    // Push each byte separately to the result vector
+                    for byte in bytes.iter() {
+                        result.push(*byte as u8); // Convert each byte to i32 and push it
+                    }
+
+                    // Optionally, push additional values based on conditions
+                    if *value > 255 {
+                        result.push(0); // Additional value if the integer is greater than 255
+                    }
+                }
+                Token::FloatOperand { value } => {
+                    println!("FloatOperand: {}", value);
+                    result.push(*value as u8); // Placeholder: convert float to integer
+                }
+                Token::LabelDeclaration { name } => {
+                    println!("LabelDeclaration: {}", name);
+                    result.push(2); // Placeholder value for label declaration
+                }
+                Token::LabelUsage { name } => {
+                    println!("LabelUsage: {}", name);
+                    result.push(3); // Placeholder value for label usage
+                }
+                Token::Directive { name } => {
+                    println!("Directive: {}", name);
+                    result.push(4); // Placeholder value for directive
+                }
+                Token::IrString { name } => {
+                    println!("IrString: {}", name);
+                    result.push(5); // Placeholder value for IR string
+                }
+                Token::Comment => {
+                    println!("Comment encountered");
+                }
+            }
+            index += 1;
+        }
+        if !result.is_empty() {
+            Ok(result)
+        } else {
+            Err("No tokens to compile")
+        }
+    }
+    pub fn tokenize<'a>(&self, input: &'a str) -> IResult<&'a str, Vec<Token>> {
+        let (input, _) = multispace0(input)?;
         let mut tokens = Vec::new();
         let mut remaining = input;
 
@@ -45,7 +159,6 @@ impl<'a> Assembler<'a> {
                 Self::parse_string,
                 Self::parse_comment,
             ))(remaining)?;
-            println!("{:?}", token);
             tokens.push(token);
             let (new_remaining, _) = multispace0(new_remaining)?;
             remaining = new_remaining;
@@ -57,41 +170,41 @@ impl<'a> Assembler<'a> {
     // Parser dla opcodes
     fn parse_opcode(input: &str) -> IResult<&str, Token> {
         let (input, opcode) = alt((
-            tag("HLT"),
-            tag("LOAD"),
-            tag("ADD"),
-            tag("SUB"),
-            tag("MUL"),
-            tag("DIV"),
-            tag("JMP"),
-            tag("JMPF"),
-            tag("EQ"),
-            tag("NEQ"),
-            tag("GT"),
-            tag("LT"),
-            tag("GTQ"),
-            tag("LTQ"),
-            tag("JMPEQ"),
-            tag("LABEL"),
+            tag_no_case("hlt"),
+            tag_no_case("load"),
+            tag_no_case("add"),
+            tag_no_case("sub"),
+            tag_no_case("mul"),
+            tag_no_case("div"),
+            tag_no_case("jmp"),
+            tag_no_case("jmpf"),
+            tag_no_case("eq"),
+            tag_no_case("neq"),
+            tag_no_case("gt"),
+            tag_no_case("lt"),
+            tag_no_case("gtq"),
+            tag_no_case("ltq"),
+            tag_no_case("jmpeq"),
+            tag_no_case("label"),
         ))(input)?;
 
-        let code = match opcode {
-            "HLT" => Opcode::HLT,
-            "LOAD" => Opcode::LOAD,
-            "ADD" => Opcode::ADD,
-            "SUB" => Opcode::SUB,
-            "MUL" => Opcode::MUL,
-            "DIV" => Opcode::DIV,
-            "JMP" => Opcode::JMP,
-            "JMPF" => Opcode::JMPF,
-            "EQ" => Opcode::EQ,
-            "NEQ" => Opcode::NEQ,
-            "GT" => Opcode::GT,
-            "LT" => Opcode::LT,
-            "GTQ" => Opcode::GTQ,
-            "LTQ" => Opcode::LTQ,
-            "JMPEQ" => Opcode::JMPEQ,
-            "LABEL" => Opcode::LABEL,
+        let code = match opcode.to_lowercase().as_str() {
+            "hlt" => Opcode::HLT,
+            "load" => Opcode::LOAD,
+            "add" => Opcode::ADD,
+            "sub" => Opcode::SUB,
+            "mul" => Opcode::MUL,
+            "div" => Opcode::DIV,
+            "jmp" => Opcode::JMP,
+            "jmpf" => Opcode::JMPF,
+            "eq" => Opcode::EQ,
+            "neq" => Opcode::NEQ,
+            "gt" => Opcode::GT,
+            "lt" => Opcode::LT,
+            "gtq" => Opcode::GTQ,
+            "ltq" => Opcode::LTQ,
+            "jmpeq" => Opcode::JMPEQ,
+            "label" => Opcode::LABEL,
             _ => Opcode::IGL,
         };
 
@@ -188,13 +301,14 @@ mod tests {
 
     #[test]
     fn test_tokenize_instruction() {
-        let input = "ADD $1 $2 ; add registers\nLOAD $1 244\nLABEL";
-        let assembler = Assembler::new(&input);
-        let (remaining, tokens) = assembler.tokenize().unwrap();
+        let input = "ADD $1 $2 ; add registers\nLOAD $6 1024\nLABEL huj";
+        let assembler = Assembler::new();
+        let (remaining, tokens) = assembler.tokenize(input).unwrap();
         assert_eq!(remaining, "");
         assert_eq!(tokens[0], Token::Op { code: Opcode::ADD });
         assert_eq!(tokens[1], Token::Register { reg_num: 1 });
         assert_eq!(tokens[2], Token::Register { reg_num: 2 });
         assert_eq!(tokens[3], Token::Comment);
+        assembler.compile(tokens).unwrap_err();
     }
 }

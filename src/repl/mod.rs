@@ -1,3 +1,4 @@
+use crate::assembler::Assembler;
 use crate::instruction::Opcode;
 use crate::vm::VM;
 use std;
@@ -8,6 +9,7 @@ use std::num::ParseIntError;
 pub struct REPL {
     command_buffer: Vec<String>,
     vm: VM,
+    assembler: Assembler,
 }
 
 impl REPL {
@@ -15,8 +17,10 @@ impl REPL {
         REPL {
             vm: VM::new(),
             command_buffer: vec![],
+            assembler: Assembler::new(),
         }
     }
+
     fn parse_hex(&mut self, i: &str) -> Result<Vec<u8>, ParseIntError> {
         let split = i.split(" ").collect::<Vec<&str>>();
         let mut results: Vec<u8> = vec![];
@@ -49,20 +53,27 @@ impl REPL {
                 .read_line(&mut buffer)
                 .expect("***ERROR***\nunable to read the command :(");
 
-            let buffer = buffer.trim();
-            self.command_buffer.push(buffer.to_string());
-            match buffer {
+            let trimmed_buffer: &str = buffer.trim();
+            self.command_buffer.push(trimmed_buffer.to_string());
+            match trimmed_buffer {
                 ".registers" => {
                     println!("Current state of registers:");
-                    let mut i = 1;
+                    let mut i = 0;
                     for register in &self.vm.registers {
                         if i % 4 != 0 {
                             print!(" [R{}]{}", i, register);
                         } else {
                             print!(" [R{}]{}\n", i, register);
                         }
+
                         i += 1;
                     }
+                    if trimmed_buffer.len() < i + 1 {
+                        print!("\n");
+                    }
+                }
+                ".pc" => {
+                    println!("Current Program Counter: {:?}", self.vm.pc);
                 }
                 ".program" => {
                     println!("Current program vector:");
@@ -78,17 +89,22 @@ impl REPL {
                     std::process::exit(0);
                 }
                 _ => {
-                    let result = self.parse_hex(buffer);
-                    match result {
-                        Ok(bytes) => {
-                            for byte in bytes {
-                                self.vm.add_byte(byte)
-                            }
-                        }
-                        Err(_e) => {
-                            println!("Unable to decode hex string. Please enter 4 groups of 2 hex characters.")
-                        }
-                    };
+                    let (res, tokens) = self.assembler.tokenize(&buffer.trim()).unwrap();
+                    let program = self.assembler.compile(tokens).unwrap();
+                    for byte in program {
+                        self.vm.add_byte(byte)
+                    }
+                    // let result = self.parse_hex(buffer.trim());
+                    // match result {
+                    //     Ok(bytes) => {
+                    //         for byte in bytes {
+                    //             self.vm.add_byte(byte)
+                    //         }
+                    //     }
+                    //     Err(_e) => {
+                    //         println!("Unable to decode hex string. Please enter 4 groups of 2 hex characters.")
+                    //     }
+                    // };
                     self.vm.run_once_write_everywhere();
                 }
             }
