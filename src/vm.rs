@@ -33,6 +33,14 @@ impl VM {
         self.pc += 2;
         result
     }
+    fn next_32_bits(&mut self) -> u32 {
+        let result = ((self.program[self.pc] as u32) << 24)
+            | ((self.program[self.pc + 1] as u32) << 16)
+            | ((self.program[self.pc + 2] as u32) << 8)
+            | self.program[self.pc + 3] as u32;
+        self.pc += 4;
+        result
+    }
     pub fn add_byte(&mut self, byte: u8) {
         self.program.push(byte);
     }
@@ -185,7 +193,7 @@ impl VM {
             }
             Opcode::LOAD => {
                 let register = self.next_8_bits() as usize;
-                let number = self.next_16_bits() + self.next_16_bits();
+                let number = self.next_32_bits();
                 println!("{:?}", number);
                 println!("LOAD value:{:?} to r{:?}", number, register);
 

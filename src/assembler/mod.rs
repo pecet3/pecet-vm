@@ -49,27 +49,39 @@ impl Assembler {
 
                             if index + 2 < tokens.len() {
                                 if let Token::IntegerOperand { value } = tokens[index + 2] {
-                                    if value > 65535 {
+                                    if value > 16_777_215 {
+                                        // 4 bytes
                                         let byte1 = (value & 0xFF) as u8; // Lowest 8 bits
                                         let byte2 = ((value >> 8) & 0xFF) as u8; // Next 8 bits
                                         let byte3 = ((value >> 16) & 0xFF) as u8; // Next 8 bits
                                         let byte4 = ((value >> 24) & 0xFF) as u8; // Highest 8 bits
 
-                                        result.push(byte1);
-                                        result.push(byte2);
-                                        result.push(byte3);
                                         result.push(byte4);
-                                    } else if value > 255 {
-                                        let low_byte = (value & 0xFF) as u8;
-                                        let high_byte = ((value >> 8) & 0xFF) as u8;
+                                        result.push(byte3);
+                                        result.push(byte2);
+                                        result.push(byte1);
+                                    } else if value > 65_535 {
+                                        // 3 bytes
+                                        let byte1 = (value & 0xFF) as u8; // Lowest 8 bits
+                                        let byte2 = ((value >> 8) & 0xFF) as u8; // Next 8 bits
+                                        let byte3 = ((value >> 16) & 0xFF) as u8; // Highest 8 bits
 
-                                        result.push(0);
+                                        result.push(0); // 1 padding byte for 4-byte alignment
+                                        result.push(byte3);
+                                        result.push(byte2);
+                                        result.push(byte1);
+                                    } else if value > 255 {
+                                        // 2 bytes
+                                        let low_byte = (value & 0xFF) as u8; // Lowest 8 bits
+                                        let high_byte = ((value >> 8) & 0xFF) as u8; // Highest 8 bits
+
+                                        result.push(0); // 2 padding bytes for 4-byte alignment
                                         result.push(0);
                                         result.push(high_byte);
                                         result.push(low_byte);
                                     } else {
-                                        // For values less than or equal to 255
-                                        result.push(0);
+                                        // 1 byte
+                                        result.push(0); // 3 padding bytes for 4-byte alignment
                                         result.push(0);
                                         result.push(0);
                                         result.push(value as u8);
