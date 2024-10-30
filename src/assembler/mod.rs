@@ -79,6 +79,41 @@ impl Assembler {
                                         result.push(0);
                                         result.push(high_byte);
                                         result.push(low_byte);
+                                    } else if value > -16_777_215 {
+                                        // 4 bytes
+                                        let byte1 = (value & 0xFF) as u8; // Lowest 8 bits
+                                        let byte2 = ((value >> 8) & 0xFF) as u8; // Next 8 bits
+                                        let byte3 = ((value >> 16) & 0xFF) as u8; // Next 8 bits
+                                        let byte4 = ((value >> 24) & 0xFF) as u8; // Highest 8 bits
+
+                                        result.push(byte4);
+                                        result.push(byte3);
+                                        result.push(byte2);
+                                        result.push(byte1);
+                                    } else if value > -65_535 {
+                                        // 3 bytes
+                                        let byte1 = (value & 0xFF) as u8; // Lowest 8 bits
+                                        let byte2 = ((value >> 8) & 0xFF) as u8; // Next 8 bits
+                                        let byte3 = ((value >> 16) & 0xFF) as u8; // Highest 8 bits
+
+                                        result.push(1); // 1 padding byte for 4-byte alignment
+                                        result.push(byte3);
+                                        result.push(byte2);
+                                        result.push(byte1);
+                                    } else if value > -255 {
+                                        // 2 bytes
+                                        let low_byte = (value & 0xFF) as u8; // Lowest 8 bits
+                                        let high_byte = ((value >> 8) & 0xFF) as u8; // Highest 8 bits
+
+                                        result.push(1); // 2 padding bytes for 4-byte alignment
+                                        result.push(1);
+                                        result.push(high_byte);
+                                        result.push(low_byte);
+                                    } else if value <= -1 {
+                                        result.push(1);
+                                        result.push(1);
+                                        result.push(1);
+                                        result.push(value as u8);
                                     } else {
                                         // 1 byte
                                         result.push(0); // 3 padding bytes for 4-byte alignment
