@@ -5,3 +5,7 @@ edition = "2021"
 
 [dependencies]
 nom = "*"
+
+[profile.release]
+strip = true 
+opt-level = "s"

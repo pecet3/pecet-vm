@@ -52,11 +52,11 @@ impl VM {
         }
         match self.decode_opcode() {
             Opcode::SQUARE => {
-                let register = self.next_8_bits() as usize;
-                let target = self.registers[register];
-                if self.equal_flag {
-                    self.pc = target as usize;
-                }
+                let register1 = self.registers[self.next_8_bits() as usize];
+                self.registers[self.next_8_bits() as usize] = register1 * register1;
+                println!("RESULT: {:?}", register1 * register1,);
+
+                return true;
             }
             Opcode::LABEL => {
                 let register = self.next_8_bits() as usize;
@@ -185,7 +185,8 @@ impl VM {
             }
             Opcode::LOAD => {
                 let register = self.next_8_bits() as usize;
-                let number = self.next_16_bits() as u16;
+                let number = self.next_16_bits() + self.next_16_bits();
+                println!("{:?}", number);
                 println!("LOAD value:{:?} to r{:?}", number, register);
 
                 self.registers[register] = number as i32;

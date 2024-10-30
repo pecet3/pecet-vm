@@ -49,16 +49,28 @@ impl Assembler {
 
                             if index + 2 < tokens.len() {
                                 if let Token::IntegerOperand { value } = tokens[index + 2] {
-                                    if value > 255 {
-                                        // Split value into two 8-bit parts (little-endian order)
-                                        let low_byte = (value & 0xFF) as i32; // Lower 8 bits
-                                        let high_byte = ((value >> 8) & 0xFF) as i32; // Upper 8 bits
+                                    if value > 65535 {
+                                        let byte1 = (value & 0xFF) as u8; // Lowest 8 bits
+                                        let byte2 = ((value >> 8) & 0xFF) as u8; // Next 8 bits
+                                        let byte3 = ((value >> 16) & 0xFF) as u8; // Next 8 bits
+                                        let byte4 = ((value >> 24) & 0xFF) as u8; // Highest 8 bits
 
-                                        // Push low byte first, then high byte
-                                        result.push(high_byte as u8);
-                                        result.push(low_byte as u8);
+                                        result.push(byte1);
+                                        result.push(byte2);
+                                        result.push(byte3);
+                                        result.push(byte4);
+                                    } else if value > 255 {
+                                        let low_byte = (value & 0xFF) as u8;
+                                        let high_byte = ((value >> 8) & 0xFF) as u8;
+
+                                        result.push(0);
+                                        result.push(0);
+                                        result.push(high_byte);
+                                        result.push(low_byte);
                                     } else {
                                         // For values less than or equal to 255
+                                        result.push(0);
+                                        result.push(0);
                                         result.push(0);
                                         result.push(value as u8);
                                     }
@@ -159,6 +171,7 @@ impl Assembler {
                 Self::parse_string,
                 Self::parse_comment,
             ))(remaining)?;
+            println!("{:?}", token);
             tokens.push(token);
             let (new_remaining, _) = multispace0(new_remaining)?;
             remaining = new_remaining;
@@ -186,6 +199,7 @@ impl Assembler {
             tag_no_case("ltq"),
             tag_no_case("jmpeq"),
             tag_no_case("label"),
+            tag_no_case("square"),
         ))(input)?;
 
         let code = match opcode.to_lowercase().as_str() {
@@ -205,6 +219,7 @@ impl Assembler {
             "ltq" => Opcode::LTQ,
             "jmpeq" => Opcode::JMPEQ,
             "label" => Opcode::LABEL,
+            "square" => Opcode::SQUARE,
             _ => Opcode::IGL,
         };
 
@@ -236,11 +251,7 @@ impl Assembler {
 
     // Parser dla deklaracji etykiet (np. label:)
     fn parse_label_declaration(input: &str) -> IResult<&str, Token> {
-        let (input, name) = terminated(
-            take_while1(|c: char| c.is_alphanumeric() || c == '_'),
-            char(':'),
-        )(input)?;
-
+        let (input, name) = char(':')(input)?;
         Ok((
             input,
             Token::LabelDeclaration {
