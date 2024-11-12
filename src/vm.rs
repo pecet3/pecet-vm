@@ -6,6 +6,8 @@ pub struct VM {
     pub program: Vec<u8>,
     pub remainder: u32,
     pub equal_flag: bool,
+    pub heap: Vec<u8>,
+    pub ro_data: Vec<u8>,
 }
 
 impl VM {
@@ -16,6 +18,8 @@ impl VM {
             program: vec![],
             remainder: 0,
             equal_flag: false,
+            heap: vec![],
+            ro_data: vec![],
         }
     }
     fn decode_opcode(&mut self) -> Opcode {
@@ -59,6 +63,26 @@ impl VM {
             return true;
         }
         match self.decode_opcode() {
+            Opcode::SET => {
+                let register = self.next_8_bits() as usize;
+
+                let bytes = self.registers[register];
+                let new_end = self.heap.len() as i32 + bytes;
+                self.heap.resize(new_end as usize, 0);
+            }
+            Opcode::ALLOC => {
+                let register = self.next_8_bits() as usize;
+                println!("test");
+
+                let bytes = self.registers[register];
+                let new_end = self.heap.len() as i32 + bytes;
+                println!("bytes {:?}", bytes);
+
+                for i in 0..bytes {
+                    println!("{:?}", bytes);
+                }
+                self.heap.resize(new_end as usize, 0);
+            }
             Opcode::SQUARE => {
                 let register1 = self.registers[self.next_8_bits() as usize];
                 self.registers[self.next_8_bits() as usize] = register1 * register1;

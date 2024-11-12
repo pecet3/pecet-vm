@@ -84,6 +84,9 @@ impl REPL {
                         println!("{}", command)
                     }
                 }
+                ".heap" => {
+                    println!("Current Program Heap: {:?}", self.vm.heap);
+                }
                 ".quit" => {
                     println!("[🛑] pecetVM has been finished the program\nGoodbye!👋");
                     std::process::exit(0);
@@ -94,17 +97,6 @@ impl REPL {
                     for byte in program {
                         self.vm.add_byte(byte)
                     }
-                    // let result = self.parse_hex(buffer.trim());
-                    // match result {
-                    //     Ok(bytes) => {
-                    //         for byte in bytes {
-                    //             self.vm.add_byte(byte)
-                    //         }
-                    //     }
-                    //     Err(_e) => {
-                    //         println!("Unable to decode hex string. Please enter 4 groups of 2 hex characters.")
-                    //     }
-                    // };
                     self.vm.run_once_write_everywhere();
                 }
             }

@@ -19,11 +19,15 @@ pub enum Opcode {
     JMPEQ,
     LABEL,
     SQUARE,
+    ALLOC,
+    SET,
 }
 
 impl From<u8> for Opcode {
     fn from(value: u8) -> Self {
         match value {
+            18 => return Opcode::SET,
+            17 => return Opcode::ALLOC,
             16 => return Opcode::SQUARE,
             15 => return Opcode::LABEL,
             14 => return Opcode::JMPEQ,
