@@ -41,7 +41,7 @@ impl Assembler {
                 Token::Op { code } => {
                     match &code {
                         Opcode::LOAD => {
-                            result.push(1); // Placeholder for LOAD Opcode
+                            result.push(1);
 
                             if index + 1 < tokens.len() {
                                 if let Token::Register { reg_num } = tokens[index + 1] {
@@ -54,7 +54,7 @@ impl Assembler {
                                     result.extend(results);
                                 }
                             }
-                            index += 2; // Move index forward by
+                            index += 2;
                         }
                         Opcode::HLT => result.push(0),
                         Opcode::IGL => result.push(0),
