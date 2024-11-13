@@ -90,11 +90,11 @@ pub fn parse_float(input: &str) -> IResult<&str, Token> {
 
 // Parser dla deklaracji etykiet (np. label:)
 pub fn parse_label_declaration(input: &str) -> IResult<&str, Token> {
-    let (input, name) = char(':')(input)?;
+    let (input, name) = take_while1(|c: char| c.is_alphanumeric() || c == ':')(input)?;
     Ok((
         input,
         Token::LabelDeclaration {
-            name: input.to_string(),
+            name: name.to_string(),
         },
     ))
 }

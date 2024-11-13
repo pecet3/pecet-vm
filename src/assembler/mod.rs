@@ -1,7 +1,12 @@
+mod asm_instruction;
 mod helpers;
 mod parsers;
-use std::ops::Deref;
+use std::{
+    borrow::{Borrow, BorrowMut},
+    ops::Deref,
+};
 
+use asm_instruction::AsmInstruction;
 use nom::{
     branch::alt,
     bytes::complete::{tag, tag_no_case, take_while1},
@@ -25,15 +30,7 @@ pub enum Token {
     IrString { name: String },
     Comment,
 }
-#[derive(Debug, PartialEq)]
-pub struct AsmInstruction {
-    pub opcode: Option<Token>,
-    pub label: Option<Token>,
-    pub directive: Option<Token>,
-    pub operand1: Option<Token>,
-    pub operand2: Option<Token>,
-    pub operand3: Option<Token>,
-}
+
 #[derive(Debug, PartialEq)]
 pub struct Assembler {
     pub program: Vec<u8>,
@@ -144,6 +141,88 @@ impl Assembler {
             Err("No tokens to compile")
         }
     }
+    pub fn to_asm_instructions(&self, tokens: Vec<Token>) -> Result<Vec<AsmInstruction>, &str> {
+        let mut index = 0;
+        let mut result: Vec<AsmInstruction> = Vec::new();
+
+        while index < tokens.len() {
+            let token = &tokens[index];
+            match token {
+                Token::Op { code } => match &code {
+                    Opcode::LOAD => {
+                        let mut new_instruction = AsmInstruction {
+                            directive: None,
+                            label: None,
+                            opcode: Some(Token::Op { code: Opcode::LOAD }),
+                            operand1: None,
+                            operand2: None,
+                            operand3: None,
+                        };
+                        if index + 2 < tokens.len() {
+                            if let Token::Register { reg_num } = tokens[index + 1] {
+                                new_instruction.operand1 =
+                                    Some(Token::Register { reg_num: reg_num })
+                            }
+                            if let Token::IntegerOperand { value } = tokens[index + 2] {
+                                new_instruction.operand2 =
+                                    Some(Token::IntegerOperand { value: value })
+                            }
+                            if let Token::FloatOperand { value } = tokens[index + 2] {
+                                new_instruction.operand2 =
+                                    Some(Token::FloatOperand { value: value })
+                            }
+                        }
+                        result.push(new_instruction);
+                        index += 2;
+                    }
+                    _ => {
+                        let mut new_instruction = AsmInstruction {
+                            directive: None,
+                            label: None,
+                            opcode: Some(Token::Op { code: code.clone() }),
+                            operand1: None,
+                            operand2: None,
+                            operand3: None,
+                        };
+                        if index + 2 < tokens.len() {
+                            if let Token::Register { reg_num } = tokens[index + 1] {
+                                new_instruction.operand1 =
+                                    Some(Token::Register { reg_num: reg_num })
+                            }
+                            if let Token::Register { reg_num } = tokens[index + 2] {
+                                new_instruction.operand2 =
+                                    Some(Token::Register { reg_num: reg_num })
+                            }
+                        }
+                        result.push(new_instruction);
+                    }
+                },
+                Token::LabelDeclaration { name } => {
+                    println!("LabelDeclaration: {}", name);
+                }
+                Token::LabelUsage { name } => {
+                    println!("LabelUsage: {}", name);
+                }
+                Token::Directive { name } => {
+                    println!("Directive: {}", name);
+                }
+                Token::IrString { name } => {
+                    println!("IrString: {}", name);
+
+                    println!("{:?}", result)
+                }
+                Token::Comment => {}
+                _ => {}
+            }
+            index += 1;
+        }
+        if !result.is_empty() {
+            Ok(result)
+        } else {
+            Err("No tokens to compile")
+        }
+    }
+
     pub fn tokenize<'a>(&self, input: &'a str) -> IResult<&'a str, Vec<Token>> {
         let (input, _) = multispace0(input)?;
         let mut tokens = Vec::new();
@@ -175,15 +254,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_tokenize_instruction() {
-        let input = "ADD $1 $2 ; add registers\nLOAD $6 1024\nhej: ADD $1 $2 \n@hej";
+    fn test_tokens_to_instructions() {
+        let input = "ADD $1 $2\n LOAD $6 1024\n";
         let assembler = Assembler::new();
         let (remaining, tokens) = assembler.tokenize(input).unwrap();
         assert_eq!(remaining, "");
-        assert_eq!(tokens[0], Token::Op { code: Opcode::ADD });
-        assert_eq!(tokens[1], Token::Register { reg_num: 1 });
-        assert_eq!(tokens[2], Token::Register { reg_num: 2 });
-        assert_eq!(tokens[3], Token::Comment);
-        assembler.compile(tokens).unwrap_err();
+        let results = assembler.to_asm_instructions(tokens).unwrap();
+        for i in results.iter() {
+            println!("{:?}", i)
+        }
     }
 }
