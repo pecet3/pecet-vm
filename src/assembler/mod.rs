@@ -25,10 +25,22 @@ pub enum Token {
     IrString { name: String },
     Comment,
 }
-pub struct Assembler {}
+#[derive(Debug, PartialEq)]
+pub struct AsmInstruction {
+    pub opcode: Option<Token>,
+    pub label: Option<Token>,
+    pub directive: Option<Token>,
+    pub operand1: Option<Token>,
+    pub operand2: Option<Token>,
+    pub operand3: Option<Token>,
+}
+#[derive(Debug, PartialEq)]
+pub struct Assembler {
+    pub program: Vec<u8>,
+}
 impl Assembler {
     pub fn new() -> Assembler {
-        Assembler {}
+        Assembler { program: vec![] }
     }
 
     pub fn compile(&self, tokens: Vec<Token>) -> Result<Vec<u8>, &str> {
@@ -122,12 +134,9 @@ impl Assembler {
                     result.extend(name.as_bytes());
                     println!("{:?}", result)
                 }
-                Token::Comment => {
-                    println!("Comment encountered");
-                }
+                Token::Comment => {}
             }
             index += 1;
-            println!("{:?}", token)
         }
         if !result.is_empty() {
             Ok(result)
@@ -152,18 +161,13 @@ impl Assembler {
                 parsers::parse_string,
                 parsers::parse_comment,
             ))(remaining)?;
-            println!("{:?}", token);
             tokens.push(token);
             let (new_remaining, _) = multispace0(new_remaining)?;
             remaining = new_remaining;
         }
-
+        println!("{:?}", tokens);
         Ok((remaining, tokens))
     }
-
-    // Parser dla opcodes
-
-    // Parser dla rejestrów (np. $0, $1, $2)
 }
 
 #[cfg(test)]
@@ -172,7 +176,7 @@ mod tests {
 
     #[test]
     fn test_tokenize_instruction() {
-        let input = "ADD $1 $2 ; add registers\nLOAD $6 1024\nLABEL huj";
+        let input = "ADD $1 $2 ; add registers\nLOAD $6 1024\nhej: ADD $1 $2 \n@hej";
         let assembler = Assembler::new();
         let (remaining, tokens) = assembler.tokenize(input).unwrap();
         assert_eq!(remaining, "");

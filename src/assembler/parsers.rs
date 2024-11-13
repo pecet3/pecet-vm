@@ -101,7 +101,7 @@ pub fn parse_label_declaration(input: &str) -> IResult<&str, Token> {
 
 // Parser dla użycia etykiet
 pub fn parse_label_usage(input: &str) -> IResult<&str, Token> {
-    let (input, name) = take_while1(|c: char| c.is_alphanumeric() || c == '_')(input)?;
+    let (input, name) = take_while1(|c: char| c.is_alphanumeric() || c == '@')(input)?;
     Ok((
         input,
         Token::LabelUsage {
