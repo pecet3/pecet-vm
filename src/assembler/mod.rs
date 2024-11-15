@@ -1,6 +1,7 @@
 mod asm_instruction;
 mod helpers;
 mod parsers;
+mod symbol_table;
 use std::{
     borrow::{Borrow, BorrowMut},
     ops::Deref,
