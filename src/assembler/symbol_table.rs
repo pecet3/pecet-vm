@@ -1,8 +1,8 @@
 #[derive(Debug, Clone)]
 pub struct Symbol {
-    name: String,
-    offset: Option<u32>,
-    symbol_type: SymbolType,
+    pub name: String,
+    pub offset: Option<u32>,
+    pub symbol_type: SymbolType,
 }
 impl Symbol {
     pub fn new(name: String, symbol_type: SymbolType) -> Symbol {
@@ -25,4 +25,17 @@ pub enum SymbolType {
     Label,
     Integer,
     IrString,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct SymbolTable {
+    pub symbols: Vec<Symbol>,
+}
+impl SymbolTable {
+    pub fn new() -> SymbolTable {
+        SymbolTable { symbols: vec![] }
+    }
+    pub fn add_symbol(&mut self, symbol: Symbol) {
+        self.symbols.push(symbol);
+    }
 }

@@ -17,6 +17,7 @@ use nom::{
     sequence::{pair, preceded, terminated},
     IResult,
 };
+use symbol_table::{Symbol, SymbolType};
 
 use crate::instruction::Opcode;
 #[derive(Debug, PartialEq)]
@@ -32,15 +33,53 @@ pub enum Token {
     Comment,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Default)]
 pub struct Assembler {
     pub program: Vec<u8>,
+    pub ro: Vec<u8>,
+    pub symbols: Vec<Symbol>,
 }
 impl Assembler {
     pub fn new() -> Assembler {
-        Assembler { program: vec![] }
+        Assembler {
+            program: vec![],
+            symbols: vec![],
+            ro: vec![],
+        }
     }
+    pub fn assemble<'a>(&self, raw: &'a str) -> Result<Vec<u8>, &str> {
+        let mut result: Vec<u8> = Vec::new();
+        let tokens = self.tokenize(raw).unwrap();
 
+        Ok(result)
+    }
+    fn process_first_phase(&mut self, tokens: Vec<Token>) {
+        let mut index = 0;
+
+        while index < tokens.len() {
+            let token = &tokens[index];
+            match token {
+                Token::LabelDeclaration { name } => {
+                    println!("LabelDeclaration: {}", name);
+
+                    let symbol = Symbol::new(name.to_string(), SymbolType::Integer);
+                    self.symbols.push(symbol);
+                }
+                Token::LabelUsage { name } => {
+                    println!("LabelUsage: {}", name);
+                }
+                Token::Directive { name } => {
+                    println!("Directive: {}", name);
+                }
+                Token::IrString { name } => {
+                    println!("IrString: {}", name);
+                }
+                Token::Comment => {}
+                _ => {}
+            }
+            index += 1;
+        }
+    }
     pub fn compile(&self, tokens: Vec<Token>) -> Result<Vec<u8>, &str> {
         let mut index = 0;
         let mut result: Vec<u8> = Vec::new();
@@ -142,7 +181,7 @@ impl Assembler {
             Err("No tokens to compile")
         }
     }
-    pub fn to_asm_instructions(&self, tokens: Vec<Token>) -> Result<Vec<AsmInstruction>, &str> {
+    fn to_asm_instructions(&self, tokens: Vec<Token>) -> Result<Vec<AsmInstruction>, &str> {
         let mut index = 0;
         let mut result: Vec<AsmInstruction> = Vec::new();
 
@@ -185,7 +224,7 @@ impl Assembler {
                             operand2: None,
                             operand3: None,
                         };
-                        if index + 2 < tokens.len() {
+                        if index + 3 < tokens.len() {
                             if let Token::Register { reg_num } = tokens[index + 1] {
                                 new_instruction.operand1 =
                                     Some(Token::Register { reg_num: reg_num })
@@ -194,8 +233,13 @@ impl Assembler {
                                 new_instruction.operand2 =
                                     Some(Token::Register { reg_num: reg_num })
                             }
+                            if let Token::Register { reg_num } = tokens[index + 3] {
+                                new_instruction.operand3 =
+                                    Some(Token::Register { reg_num: reg_num })
+                            }
                         }
                         result.push(new_instruction);
+                        index += 3;
                     }
                 },
                 Token::LabelDeclaration { name } => {
@@ -256,7 +300,7 @@ mod tests {
 
     #[test]
     fn test_tokens_to_instructions() {
-        let input = "ADD $1 $2\n LOAD $6 1024\n";
+        let input = "ADD $1 $2 $3\n LOAD $6 1024\n";
         let assembler = Assembler::new();
         let (remaining, tokens) = assembler.tokenize(input).unwrap();
         assert_eq!(remaining, "");
